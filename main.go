@@ -29,18 +29,12 @@ var serverHandler *http.ServeMux
 var server http.Server
 
 func authorApiHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("Got a request")
-	if r.Method != http.MethodPost {
-		errorJson(w, "Request has to be POST", http.StatusBadRequest)
+	log.Println("Got a request on /author_api/")
+	if r.Method != http.MethodGet {
+		errorJson(w, "Request has to be GET", http.StatusBadRequest)
 		return
 	}
-	var steamId string
-	err := json.NewDecoder(r.Body).Decode(&steamId)
-	if err != nil {
-		log.Println(err)
-		errorJson(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	var steamId string = r.URL.Path[len("/author_api/"):]
 	authorStats, err := GetAuthorStats(steamId)
 	if err != nil {
 		log.Println(err)
@@ -54,7 +48,7 @@ func main() {
 	serverHandler = http.NewServeMux()
 	server = http.Server{Addr: ":3000", Handler: serverHandler}
 
-	serverHandler.HandleFunc("/author_api", authorApiHandler)
+	serverHandler.HandleFunc("/author_api/", authorApiHandler)
 
 	wg.Add(1)
 	go func() {
