@@ -8,8 +8,6 @@ import (
 	"golang.org/x/net/html"
 )
 
-const url string = "http://javid.ddns.net/tModLoader/tools/ranksbysteamid.php?steamid64="
-
 type ModStats struct {
 	RankTotal          int
 	DisplayName        string
@@ -17,8 +15,24 @@ type ModStats struct {
 	DownloadsYesterday int
 }
 
-func GetHtml(steamId string) (*html.Node, error) {
-	resp, err := http.Get(url + steamId)
+type ModInfo struct {
+	DisplayName        string
+	DownloadsTotal     int
+	DownloadsYesterday int
+	TModLoaderVersion  string
+	ModName            string
+}
+
+func GetAuthorInfoHtml(steamId string) (*html.Node, error) {
+	resp, err := http.Get("http://javid.ddns.net/tModLoader/tools/ranksbysteamid.php?steamid64=" + steamId)
+	if err != nil {
+		return nil, err
+	}
+	return html.Parse(resp.Body)
+}
+
+func GetModListHtml() (*html.Node, error) {
+	resp, err := http.Get("http://javid.ddns.net/tModLoader/modmigrationprogress.php")
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +69,7 @@ func getNodeContent(node *html.Node) string {
 }
 
 func GetAuthorStats(steamId string) ([]ModStats, error) {
-	doc, err := GetHtml(steamId)
+	doc, err := GetAuthorInfoHtml(steamId)
 	if err != nil {
 		return nil, err
 	}
@@ -93,4 +107,42 @@ func GetAuthorStats(steamId string) ([]ModStats, error) {
 		})
 	}
 	return modStats, nil
+}
+
+func GetModList() ([]ModInfo, error) {
+	doc, err := GetModListHtml()
+	if err != nil {
+		return nil, err
+	}
+	tBody, err := GetNodesByTag(doc, "tbody")
+	if err != nil {
+		return nil, err
+	}
+	table, err := GetNodesByTag(tBody[0], "tr")
+	if err != nil {
+		return nil, err
+	}
+	var modList []ModInfo = make([]ModInfo, 0)
+	for _, v := range table[1:] {
+		tds, err := GetNodesByTag(v, "td")
+		if err != nil {
+			return nil, err
+		}
+		downloadsTotal, err := strconv.Atoi(getNodeContent(tds[1]))
+		if err != nil {
+			return nil, err
+		}
+		downloadsYesterday, err := strconv.Atoi(getNodeContent(tds[2]))
+		if err != nil {
+			return nil, err
+		}
+		modList = append(modList, ModInfo{
+			DisplayName:        getNodeContent(tds[0]),
+			DownloadsTotal:     downloadsTotal,
+			DownloadsYesterday: downloadsYesterday,
+			TModLoaderVersion:  getNodeContent(tds[3]),
+			ModName:            getNodeContent(tds[4]),
+		})
+	}
+	return modList, nil
 }

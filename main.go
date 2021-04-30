@@ -31,7 +31,7 @@ var server http.Server
 func authorApiHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Got a request on /author_api/")
 	if r.Method != http.MethodGet {
-		errorJson(w, "Request has to be GET", http.StatusBadRequest)
+		errorJson(w, "Request must be GET", http.StatusBadRequest)
 		return
 	}
 	var steamId string = r.URL.Path[len("/author_api/"):]
@@ -44,11 +44,27 @@ func authorApiHandler(w http.ResponseWriter, r *http.Request) {
 	returnJsonFromStruct(w, authorStats, http.StatusOK)
 }
 
+func modListHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("Got a request on /modList")
+	if r.Method != http.MethodGet {
+		errorJson(w, "Request must be GET", http.StatusBadRequest)
+		return
+	}
+	modList, err := GetModList()
+	if err != nil {
+		log.Panicln(err)
+		errorJson(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	returnJsonFromStruct(w, modList, http.StatusOK)
+}
+
 func main() {
 	serverHandler = http.NewServeMux()
 	server = http.Server{Addr: ":3000", Handler: serverHandler}
 
 	serverHandler.HandleFunc("/author_api/", authorApiHandler)
+	serverHandler.HandleFunc("/modList", modListHandler)
 
 	wg.Add(1)
 	go func() {
